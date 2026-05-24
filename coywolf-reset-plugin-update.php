@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name:       Coywolf Reset Plugin Update
- * Plugin URI:        https://coywolf.com/
+ * Plugin URI:        https://github.com/coywolf-llc/reset-plugin-update
  * Description:       Adds a Tools → Reset Updates page with a button that flushes the plugin update cache, forcing WordPress to re-check for updates on plugins hosted on GitHub or the wordpress.org plugin repository.
  * Version:           1.0.0
  * Requires at least: 5.0

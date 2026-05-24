@@ -4,7 +4,7 @@ Tags: plugin updates, updates, cache, github, maintenance
 Requires at least: 5.0
 Tested up to: 6.5
 Requires PHP: 7.2
-Stable tag: 1.0.4
+Stable tag: 1.0.5
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -62,6 +62,9 @@ On a multisite, only users who could already update plugins network-wide
 will see the Tools menu item.
 
 == Changelog ==
+
+= 1.0.5 =
+* No-op release to verify the GitHub self-updater surfaces this plugin on the Updates screen.
 
 = 1.0.4 =
 * Add GitHub self-updater so the button can surface this plugin's own updates (#5).

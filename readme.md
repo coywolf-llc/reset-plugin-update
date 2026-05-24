@@ -78,3 +78,4 @@ Anyone with the `update_plugins` capability — typically administrators only. O
 ### 1.0.0
 - Initial release.
 
+

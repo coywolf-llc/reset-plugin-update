@@ -207,7 +207,7 @@ final class Coywolf_RPU_GitHub_Updater {
 		$obj->new_version   = $remote_version;
 		$obj->url           = 'https://github.com/' . self::REPO;
 		$obj->package       = $this->pick_package_url( $release );
-		$obj->icons         = array();
+		$obj->icons         = $this->icon_urls();
 		$obj->banners       = array();
 		$obj->banners_rtl   = array();
 		$obj->tested        = '';
@@ -249,7 +249,34 @@ final class Coywolf_RPU_GitHub_Updater {
 			'description' => 'Clears the WordPress plugin update cache so plugins hosted on GitHub or wordpress.org are re-checked immediately.',
 			'changelog'   => $this->render_changelog( isset( $release['body'] ) ? $release['body'] : '' ),
 		);
+		$info->icons         = $this->icon_urls();
 		return $info;
+	}
+
+	/**
+	 * Icon URLs for the Plugins / Updates / View-details screens.
+	 *
+	 * WordPress's plugin-update UI reads the icon URLs straight from the
+	 * `icons` array on the plugin object in the `update_plugins` transient
+	 * (and from the same key on the `plugins_api` "plugin_information"
+	 * response). Without this, WP falls back to its generic plug icon — the
+	 * `.wordpress-org/icon-*.png` files in the repo are never picked up,
+	 * partly because they aren't shipped in the release zip (the release
+	 * workflow excludes the `.wordpress-org` directory) and partly because
+	 * even if they were, WP doesn't know to look for them by path.
+	 *
+	 * Point at the canonical PNGs on `raw.githubusercontent.com` so the
+	 * Coywolf logo renders on the Updates row and the View-details modal.
+	 *
+	 * @return array<string,string>
+	 */
+	private function icon_urls() {
+		$base = 'https://raw.githubusercontent.com/' . self::REPO . '/main/.wordpress-org/';
+		return array(
+			'1x'      => $base . 'icon-128x128.png',
+			'2x'      => $base . 'icon-256x256.png',
+			'default' => $base . 'icon-256x256.png',
+		);
 	}
 
 	/**

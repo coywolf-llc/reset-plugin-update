@@ -73,19 +73,31 @@ final class Coywolf_RPU_GitHub_Updater {
 	}
 
 	/**
-	 * After WordPress finishes installing this plugin's update, clear our
-	 * cached GitHub release AND the core `update_plugins` site transient.
+	 * After WordPress finishes installing this plugin's update, refresh
+	 * our installed-version cache and clear the GitHub-release + WP
+	 * `update_plugins` site transients (and every layer of the plugins
+	 * cache).
 	 *
-	 * Without this, WP keeps the pre-update "newer version available" row
-	 * on the Updates screen until its next scheduled refresh (often hours
-	 * later), so the user sees the same update offered a second time and
-	 * has to install it again before it disappears. The next pageload
-	 * after this hook re-fetches both transients, so the now-current
-	 * version is read fresh and the row goes away.
+	 * The version-refresh is the critical part. The OLD plugin code is
+	 * still loaded in this PHP request (PHP doesn't re-`include` a file
+	 * just because it changed on disk), so `$this->current_version` is
+	 * the pre-upgrade version constant. Anything that calls
+	 * `wp_update_plugins()` later in the *same* request — admin notices,
+	 * an auto-update tick, the Updates page itself when it renders the
+	 * post-install state — would otherwise run our `inject_update`
+	 * filter, compare the just-fetched GitHub release against the stale
+	 * in-memory version, and helpfully re-inject the now-installed
+	 * release as "an update is available." That's the second update
+	 * prompt the user kept seeing.
+	 *
+	 * Reading the version off disk via `get_plugin_data()` returns the
+	 * NEW header (it parses the file as text, not the cached opcode), so
+	 * the comparison from this point on uses the correct installed
+	 * version.
 	 *
 	 * Scoped to runs where WP reports this plugin's basename in the
-	 * upgrader's hook_extra.plugins list, so unrelated plugin/theme/core
-	 * updates don't trigger the flush.
+	 * upgrader's hook_extra, so unrelated plugin/theme/core updates
+	 * don't trigger the flush.
 	 *
 	 * @param WP_Upgrader $upgrader   Upgrader instance (unused).
 	 * @param array       $hook_extra { action, type, plugins, ... }
@@ -112,9 +124,32 @@ final class Coywolf_RPU_GitHub_Updater {
 			return;
 		}
 
+		// 1. Refresh `current_version` from the upgraded plugin file on disk.
+		if ( ! function_exists( 'get_plugin_data' ) ) {
+			require_once ABSPATH . 'wp-admin/includes/plugin.php';
+		}
+		$main = WP_PLUGIN_DIR . '/' . $this->plugin_basename;
+		if ( file_exists( $main ) ) {
+			$data = get_plugin_data( $main, false, false );
+			if ( ! empty( $data['Version'] ) ) {
+				$this->current_version = (string) $data['Version'];
+			}
+		}
+
+		// 2. Clear our cached GitHub release.
 		delete_site_transient( self::TRANSIENT_KEY );
 		delete_site_transient( self::TRANSIENT_KEY . '_neg' );
-		delete_site_transient( 'update_plugins' );
+
+		// 3. Clear every layer of the plugins update cache — site
+		//    transient (option + object cache) and the `plugins` cache
+		//    group `get_plugins()` reads from. `wp_clean_plugins_cache(
+		//    true )` does both: deletes the update_plugins transient
+		//    and the `plugins` cache group entry.
+		if ( function_exists( 'wp_clean_plugins_cache' ) ) {
+			wp_clean_plugins_cache( true );
+		} else {
+			delete_site_transient( 'update_plugins' );
+		}
 	}
 
 	/**

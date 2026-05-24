@@ -34,6 +34,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+require_once __DIR__ . '/includes/class-github-updater.php';
+
 final class Coywolf_Reset_Plugin_Update {
 
 	const VERSION    = '1.0.3';
@@ -214,3 +216,9 @@ final class Coywolf_Reset_Plugin_Update {
 }
 
 Coywolf_Reset_Plugin_Update::boot();
+
+// Self-update from GitHub Releases. Without this, the "Reset plugin update
+// cache" button has nothing to surface for THIS plugin — WordPress only
+// knows about wp.org-hosted plugins by default. This filter teaches WP to
+// look at the project's GitHub releases for newer versions.
+( new Coywolf_RPU_GitHub_Updater( __FILE__, Coywolf_Reset_Plugin_Update::VERSION ) )->init();

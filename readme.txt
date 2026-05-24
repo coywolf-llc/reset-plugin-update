@@ -4,7 +4,7 @@ Tags: plugin updates, updates, cache, github, maintenance
 Requires at least: 5.0
 Tested up to: 6.5
 Requires PHP: 7.2
-Stable tag: 1.0.6
+Stable tag: 1.0.7
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -62,6 +62,9 @@ On a multisite, only users who could already update plugins network-wide
 will see the Tools menu item.
 
 == Changelog ==
+
+= 1.0.7 =
+* No-op release to verify the plugin icon shows on the Updates row once the site is running an icon-aware updater (1.0.6+).
 
 = 1.0.6 =
 * Show the plugin icon on the Updates / Plugins / View-details screens by populating `icons` on the update object and the `plugins_api` response.

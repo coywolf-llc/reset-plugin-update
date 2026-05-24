@@ -4,7 +4,7 @@
 
 Adds a **Tools → Reset Updates** page with a single button that flushes the plugin update cache so WordPress re-checks every installed plugin for new versions — including plugins hosted on GitHub and on the wordpress.org plugin repository.
 
-- **Version:** 1.0.2
+- **Version:** 1.0.3
 - **Requires WordPress:** 5.0 or later
 - **Tested up to:** 6.5
 - **Requires PHP:** 7.2 or later
@@ -43,6 +43,9 @@ Yes. In addition to the standard `update_plugins` transient, it sweeps any site 
 Anyone with the `update_plugins` capability — typically administrators only. On a multisite, only users who could already update plugins network-wide will see the Tools menu item.
 
 ## Changelog
+
+### 1.0.3
+- Harden handle_reset(): POST-only + explicit login check (#4).
 
 ### 1.0.2
 - Fix: redirect to update-core.php to actually trigger the re-check (#3).

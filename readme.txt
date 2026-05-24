@@ -4,7 +4,7 @@ Tags: plugin updates, updates, cache, github, maintenance
 Requires at least: 5.0
 Tested up to: 6.5
 Requires PHP: 7.2
-Stable tag: 1.0.2
+Stable tag: 1.0.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -62,6 +62,9 @@ On a multisite, only users who could already update plugins network-wide
 will see the Tools menu item.
 
 == Changelog ==
+
+= 1.0.3 =
+* Harden handle_reset(): POST-only + explicit login check (#4).
 
 = 1.0.2 =
 * Fix: redirect to update-core.php to actually trigger the re-check (#3).

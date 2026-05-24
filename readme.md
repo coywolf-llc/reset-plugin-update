@@ -4,7 +4,7 @@
 
 Adds a **Tools → Reset Updates** page with a single button that flushes the plugin update cache so WordPress re-checks every installed plugin for new versions — including plugins hosted on GitHub and on the wordpress.org plugin repository.
 
-- **Version:** 1.0.6
+- **Version:** 1.0.7
 - **Requires WordPress:** 5.0 or later
 - **Tested up to:** 6.5
 - **Requires PHP:** 7.2 or later
@@ -44,6 +44,9 @@ Yes. In addition to the standard `update_plugins` transient, it sweeps any site 
 Anyone with the `update_plugins` capability — typically administrators only. On a multisite, only users who could already update plugins network-wide will see the Tools menu item.
 
 ## Changelog
+
+### 1.0.7
+- No-op release to verify the plugin icon shows on the Updates row once the site is running an icon-aware updater (1.0.6+).
 
 ### 1.0.6
 - Show the plugin icon on the Updates / Plugins / View-details screens by populating `icons` on the update object and the `plugins_api` response.

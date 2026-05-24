@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       Coywolf Reset Plugin Update
  * Plugin URI:        https://github.com/coywolf-llc/reset-plugin-update
- * Description:       Adds a Tools → Reset Updates page with a button that flushes the plugin update cache, forcing WordPress to re-check for updates on plugins hosted on GitHub or the wordpress.org plugin repository.
+ * Description:       Adds a Tools → Reset Updates page with a button that flushes the plugin update cache and force-triggers WordPress to re-check for updates on plugins hosted on GitHub or the wordpress.org plugin repository.
  * Version:           1.0.1
  * Requires at least: 5.0
  * Requires PHP:      7.2
@@ -36,14 +36,17 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 final class Coywolf_Reset_Plugin_Update {
 
-	const VERSION   = '1.0.1';
-	const SLUG      = 'coywolf-rpu';
-	const ACTION    = 'coywolf_rpu_reset';
+	const VERSION    = '1.0.1';
+	const SLUG       = 'coywolf-rpu';
+	const ACTION     = 'coywolf_rpu_reset';
 	const CAPABILITY = 'update_plugins';
+	const NOTICE_KEY = 'coywolf_rpu_notice_';
 
 	public static function boot() {
-		add_action( 'admin_menu', array( __CLASS__, 'register_menu' ) );
+		add_action( 'admin_menu',                 array( __CLASS__, 'register_menu' ) );
 		add_action( 'admin_post_' . self::ACTION, array( __CLASS__, 'handle_reset' ) );
+		add_action( 'admin_notices',              array( __CLASS__, 'maybe_render_notice' ) );
+		add_action( 'network_admin_notices',      array( __CLASS__, 'maybe_render_notice' ) );
 	}
 
 	public static function register_menu() {
@@ -61,25 +64,12 @@ final class Coywolf_Reset_Plugin_Update {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'coywolf-rpu' ) );
 		}
 
-		$updated = isset( $_GET['updated'] ) && '1' === $_GET['updated']; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-
 		?>
 		<div class="wrap">
 			<h1><?php esc_html_e( 'Reset Plugin Updates', 'coywolf-rpu' ); ?></h1>
 
-			<?php if ( $updated ) : ?>
-				<div class="notice notice-success">
-					<p>
-						<?php esc_html_e( 'Plugin update cache cleared. WordPress will check for updates on the next request.', 'coywolf-rpu' ); ?>
-						<a href="<?php echo esc_url( admin_url( 'plugins.php' ) ); ?>"><?php esc_html_e( 'Go to the Plugins page', 'coywolf-rpu' ); ?></a>
-						<?php esc_html_e( 'or', 'coywolf-rpu' ); ?>
-						<a href="<?php echo esc_url( admin_url( 'update-core.php' ) ); ?>"><?php esc_html_e( 'view the Updates screen', 'coywolf-rpu' ); ?></a>.
-					</p>
-				</div>
-			<?php endif; ?>
-
 			<p>
-				<?php esc_html_e( 'Clears the cached plugin update data so WordPress re-checks every plugin for new versions — including plugins hosted on GitHub and on the wordpress.org plugin repository. Useful when a release was just published and you do not want to wait for the next scheduled check.', 'coywolf-rpu' ); ?>
+				<?php esc_html_e( 'Clears the cached plugin update data and force-triggers WordPress to re-check every plugin for new versions — including plugins hosted on GitHub and on the wordpress.org plugin repository. Useful when a release was just published and you do not want to wait for the next scheduled check.', 'coywolf-rpu' ); ?>
 			</p>
 
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
@@ -91,23 +81,44 @@ final class Coywolf_Reset_Plugin_Update {
 		<?php
 	}
 
+	/**
+	 * Handle the POSTed button click. Clears the cached update data and then
+	 * redirects to WordPress's own "Check Again" URL — `update-core.php` with
+	 * `force-check=1`. That page's `load-update-core.php` hook calls
+	 * `wp_version_check()`, `wp_update_plugins()` and `wp_update_themes()`
+	 * with the force flag set, so the re-check is guaranteed to run in the
+	 * same request the user lands on. This mirrors the original
+	 * `?coywolf_blc_check` snippet's flow (delete transients → redirect to
+	 * update-core.php), which is what made the original snippet reliable.
+	 */
 	public static function handle_reset() {
 		if ( ! current_user_can( self::CAPABILITY ) ) {
 			wp_die( esc_html__( 'You do not have permission to perform this action.', 'coywolf-rpu' ) );
 		}
 		check_admin_referer( self::ACTION );
 
-		self::reset_plugin_update_cache();
+		self::clear_update_caches();
 
-		wp_safe_redirect( add_query_arg( array( 'page' => self::SLUG, 'updated' => '1' ), admin_url( 'tools.php' ) ) );
+		// One-shot flag so the success notice appears on the page the user
+		// lands on after the redirect (update-core.php).
+		set_transient( self::NOTICE_KEY . get_current_user_id(), 1, MINUTE_IN_SECONDS );
+
+		wp_safe_redirect( add_query_arg( 'force-check', '1', self_admin_url( 'update-core.php' ) ) );
 		exit;
 	}
 
 	/**
-	 * Drop the cached plugin update data, including throttle caches commonly
-	 * used by GitHub-hosted plugin updaters, then ask WordPress to re-check.
+	 * Drop the cached plugin-update data and any throttle caches commonly
+	 * used by self-hosted GitHub plugin updaters.
+	 *
+	 * Coywolf plugins' GitHub updater stores its GitHub-release response in
+	 * `<slug>_gh_release` and a short negative-response cache in
+	 * `<slug>_gh_release_neg`. Other GitHub-updater libraries use
+	 * `*_github_release` / `*_github_update`. The LIKE patterns below sweep
+	 * all of those (and their `_timeout_` siblings) regardless of where
+	 * `_gh_release` appears in the key.
 	 */
-	private static function reset_plugin_update_cache() {
+	private static function clear_update_caches() {
 		global $wpdb;
 
 		delete_site_transient( 'update_plugins' );
@@ -115,18 +126,8 @@ final class Coywolf_Reset_Plugin_Update {
 			wp_clean_plugins_cache( true );
 		}
 
-		// Clear site transients that look like GitHub-release throttle caches
-		// used by self-hosted plugin updaters (e.g. "*_gh_release",
-		// "*_github_release", "*_github_update"). Both single and multisite
-		// keep site transients in the sitemeta / options table.
-		$patterns = array(
-			'_site_transient_%_gh_release',
-			'_site_transient_%_github_release',
-			'_site_transient_%_github_update',
-			'_site_transient_timeout_%_gh_release',
-			'_site_transient_timeout_%_github_release',
-			'_site_transient_timeout_%_github_update',
-		);
+		$like_patterns = array( '%gh_release%', '%github_release%', '%github_update%' );
+		$prefixes      = array( '_site_transient_', '_site_transient_timeout_' );
 
 		if ( is_multisite() ) {
 			$table  = $wpdb->sitemeta;
@@ -136,26 +137,47 @@ final class Coywolf_Reset_Plugin_Update {
 			$column = 'option_name';
 		}
 
-		$keys = array();
-		foreach ( $patterns as $pattern ) {
-			$rows = $wpdb->get_col( $wpdb->prepare( "SELECT {$column} FROM {$table} WHERE {$column} LIKE %s", $pattern ) ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-			if ( $rows ) {
-				$keys = array_merge( $keys, $rows );
+		$found = array();
+		foreach ( $like_patterns as $pat ) {
+			foreach ( $prefixes as $prefix ) {
+				$like = $prefix . $pat;
+				$sql  = "SELECT {$column} FROM {$table} WHERE {$column} LIKE %s"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				$rows = $wpdb->get_col( $wpdb->prepare( $sql, $like ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				if ( $rows ) {
+					$found = array_merge( $found, $rows );
+				}
 			}
 		}
 
-		foreach ( array_unique( $keys ) as $key ) {
-			$transient = preg_replace( '/^_site_transient_(timeout_)?/', '', $key );
+		foreach ( array_unique( $found ) as $key ) {
+			$transient = preg_replace( '/^_site_transient_(?:timeout_)?/', '', $key );
 			if ( $transient ) {
 				delete_site_transient( $transient );
 			}
 		}
+	}
 
-		// Ask WordPress to run the plugin update check immediately so the
-		// Updates / Plugins screens reflect the new state on the redirect.
-		if ( function_exists( 'wp_update_plugins' ) ) {
-			wp_update_plugins();
+	/**
+	 * Show a one-shot success notice after the redirect lands on
+	 * update-core.php. Deleted on first render so it does not re-appear on
+	 * subsequent page loads.
+	 */
+	public static function maybe_render_notice() {
+		if ( ! current_user_can( self::CAPABILITY ) ) {
+			return;
 		}
+		$key = self::NOTICE_KEY . get_current_user_id();
+		if ( ! get_transient( $key ) ) {
+			return;
+		}
+		delete_transient( $key );
+
+		printf(
+			'<div class="notice notice-success is-dismissible"><p>%1$s <a href="%2$s">%3$s</a></p></div>',
+			esc_html__( 'Plugin update cache cleared and WordPress is re-checking now.', 'coywolf-rpu' ),
+			esc_url( admin_url( 'plugins.php' ) ),
+			esc_html__( 'Go to the Plugins page', 'coywolf-rpu' )
+		);
 	}
 }
 

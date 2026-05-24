@@ -16,8 +16,9 @@ WordPress caches plugin update data and only re-checks every 12 hours. When you 
 
 - Adds a **Reset Updates** sub-menu under **Tools**.
 - The page has a single **Reset plugin update cache** button.
-- Clicking it deletes the `update_plugins` site transient, clears the plugin-info cache (`wp_clean_plugins_cache`), removes common GitHub-updater throttle caches (any site transient whose name ends in `_gh_release`, `_github_release`, or `_github_update`), and runs `wp_update_plugins()` immediately.
-- On success the page redirects back to itself with a confirmation notice and a link to the **Plugins** screen (and to **Dashboard → Updates**) so you can act on the freshly fetched results.
+- Clicking it deletes the `update_plugins` site transient, clears the plugin-info cache (`wp_clean_plugins_cache`), and sweeps common GitHub-updater throttle caches (any site transient whose key contains `gh_release`, `github_release`, or `github_update` — including the `_neg` negative-response variants Coywolf's own updater uses).
+- The handler then redirects to WordPress's own **Check Again** URL (`update-core.php?force-check=1`). That page's `load-update-core.php` hook calls `wp_version_check()`, `wp_update_plugins()`, and `wp_update_themes()` with `force = true`, so the re-check is guaranteed to run in the same request the user lands on — same flow the original `?coywolf_blc_check` snippet relied on.
+- A one-shot success notice appears on the Updates page with a link to the **Plugins** screen so you can act on the freshly fetched results.
 - Access is gated by the standard `update_plugins` capability — by default only administrators.
 - Stores no options of its own. `uninstall.php` clears the plugin-update caches once more so the site is left clean when the plugin is removed.
 
@@ -35,7 +36,7 @@ No. It only clears the cached "what updates are available" data and asks WordPre
 
 ### Will it pick up GitHub-hosted plugins?
 
-Yes. In addition to the standard `update_plugins` transient, it clears any site transient whose key ends in `_gh_release`, `_github_release`, or `_github_update` — the patterns commonly used by self-hosted plugin updaters to throttle calls to the GitHub Releases API. After clearing them, the next plugin-update check will hit GitHub instead of returning the cached response.
+Yes. In addition to the standard `update_plugins` transient, it sweeps any site transient whose key contains `gh_release`, `github_release`, or `github_update` — the patterns commonly used by self-hosted plugin updaters to throttle calls to the GitHub Releases API (including Coywolf's own `_gh_release` and `_gh_release_neg` keys). After clearing them, the forced re-check on `update-core.php` will hit GitHub instead of returning the cached response.
 
 ### Who can use it?
 

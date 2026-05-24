@@ -90,11 +90,43 @@ final class Coywolf_Reset_Plugin_Update {
 	 * same request the user lands on. This mirrors the original
 	 * `?coywolf_blc_check` snippet's flow (delete transients → redirect to
 	 * update-core.php), which is what made the original snippet reliable.
+	 *
+	 * Security gates (all must pass before any cache mutation happens):
+	 *   1. POST request only — refuses GET / HEAD / etc. so a crafted URL
+	 *      with a valid nonce in someone's browser history or referer logs
+	 *      cannot trigger the reset.
+	 *   2. User must be logged in. The `admin_post_{action}` hook already
+	 *      implies this (admin-post.php routes unauthenticated requests to
+	 *      `admin_post_nopriv_{action}`, which this plugin never registers),
+	 *      but the explicit check is defense in depth.
+	 *   3. User must hold the `update_plugins` capability. On single-site
+	 *      that's administrators only; on multisite, network admins only.
+	 *   4. Valid, fresh nonce tied to this specific action.
+	 *      `check_admin_referer()` halts with a 403 if missing or expired.
 	 */
 	public static function handle_reset() {
-		if ( ! current_user_can( self::CAPABILITY ) ) {
-			wp_die( esc_html__( 'You do not have permission to perform this action.', 'coywolf-rpu' ) );
+		// 1. POST-only.
+		$method = isset( $_SERVER['REQUEST_METHOD'] )
+			? strtoupper( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotValidated
+			: '';
+		if ( 'POST' !== $method ) {
+			wp_die(
+				esc_html__( 'This action can only be performed by submitting the Reset Updates form.', 'coywolf-rpu' ),
+				esc_html__( 'Method Not Allowed', 'coywolf-rpu' ),
+				array( 'response' => 405 )
+			);
 		}
+
+		// 2 + 3. Logged-in user with the right cap.
+		if ( ! is_user_logged_in() || ! current_user_can( self::CAPABILITY ) ) {
+			wp_die(
+				esc_html__( 'You do not have permission to perform this action.', 'coywolf-rpu' ),
+				esc_html__( 'Forbidden', 'coywolf-rpu' ),
+				array( 'response' => 403 )
+			);
+		}
+
+		// 4. Nonce.
 		check_admin_referer( self::ACTION );
 
 		self::clear_update_caches();

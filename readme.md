@@ -21,6 +21,7 @@ WordPress caches plugin update data and only re-checks every 12 hours. When you 
 - A one-shot success notice appears on the Updates page with a link to the **Plugins** screen so you can act on the freshly fetched results.
 - Access is gated by the standard `update_plugins` capability — by default only administrators.
 - Stores no options of its own. `uninstall.php` clears the plugin-update caches once more so the site is left clean when the plugin is removed.
+- Self-updates from its own GitHub releases via the standard **Dashboard → Updates** flow (releases cached for 6 hours, downloads pinned to a GitHub host allowlist) — so the **Reset plugin update cache** button can find newer versions of this plugin itself.
 
 ## Installation
 

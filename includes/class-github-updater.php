@@ -69,6 +69,52 @@ final class Coywolf_RPU_GitHub_Updater {
 		add_filter( 'upgrader_source_selection', array( $this, 'fix_source_dirname' ), 10, 4 );
 		add_filter( 'plugin_row_meta', array( $this, 'override_view_details' ), 10, 2 );
 		add_filter( 'upgrader_pre_download', array( $this, 'guard_pre_download' ), 10, 3 );
+		add_action( 'upgrader_process_complete', array( $this, 'flush_after_update' ), 10, 2 );
+	}
+
+	/**
+	 * After WordPress finishes installing this plugin's update, clear our
+	 * cached GitHub release AND the core `update_plugins` site transient.
+	 *
+	 * Without this, WP keeps the pre-update "newer version available" row
+	 * on the Updates screen until its next scheduled refresh (often hours
+	 * later), so the user sees the same update offered a second time and
+	 * has to install it again before it disappears. The next pageload
+	 * after this hook re-fetches both transients, so the now-current
+	 * version is read fresh and the row goes away.
+	 *
+	 * Scoped to runs where WP reports this plugin's basename in the
+	 * upgrader's hook_extra.plugins list, so unrelated plugin/theme/core
+	 * updates don't trigger the flush.
+	 *
+	 * @param WP_Upgrader $upgrader   Upgrader instance (unused).
+	 * @param array       $hook_extra { action, type, plugins, ... }
+	 */
+	public function flush_after_update( $upgrader, $hook_extra ) {
+		unset( $upgrader );
+		if ( ! is_array( $hook_extra ) ) {
+			return;
+		}
+		if ( ( $hook_extra['action'] ?? '' ) !== 'update' ) {
+			return;
+		}
+		if ( ( $hook_extra['type'] ?? '' ) !== 'plugin' ) {
+			return;
+		}
+		$plugins = isset( $hook_extra['plugins'] ) && is_array( $hook_extra['plugins'] )
+			? $hook_extra['plugins']
+			: array();
+		// Some upgrader paths use 'plugin' (singular) when only one is updated.
+		if ( empty( $plugins ) && ! empty( $hook_extra['plugin'] ) ) {
+			$plugins = array( (string) $hook_extra['plugin'] );
+		}
+		if ( ! in_array( $this->plugin_basename, $plugins, true ) ) {
+			return;
+		}
+
+		delete_site_transient( self::TRANSIENT_KEY );
+		delete_site_transient( self::TRANSIENT_KEY . '_neg' );
+		delete_site_transient( 'update_plugins' );
 	}
 
 	/**

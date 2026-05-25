@@ -6,7 +6,7 @@ Adds a **Tools → Reset Updates** page with a single button that flushes the pl
 
 - **Version:** 1.0.11
 - **Requires WordPress:** 5.0 or later
-- **Tested up to:** 6.5
+- **Tested up to:** 7.0
 - **Requires PHP:** 7.2 or later
 - **License:** [GPL-2.0-or-later](https://www.gnu.org/licenses/gpl-2.0.html)
 

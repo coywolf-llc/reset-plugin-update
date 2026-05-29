@@ -174,7 +174,15 @@ final class Coywolf_Reset_Plugin_Update {
 		$found = array();
 		foreach ( $like_patterns as $pat ) {
 			foreach ( $prefixes as $prefix ) {
-				$like = $prefix . $pat;
+				// esc_like() the prefix so the `_` characters in
+				// `_site_transient_` are treated as literals, not as the
+				// MySQL "any single character" wildcard. Without this the
+				// query can't use the index on option_name and degrades
+				// to a full-table scan; with it, MySQL can range-scan the
+				// prefix and only the `%gh_release%` tail forces a scan
+				// of the (much smaller) matching range. The `$pat` half
+				// is left alone — those `%` are intentional wildcards.
+				$like = $wpdb->esc_like( $prefix ) . $pat;
 				$sql  = "SELECT {$column} FROM {$table} WHERE {$column} LIKE %s"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 				$rows = $wpdb->get_col( $wpdb->prepare( $sql, $like ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
 				if ( $rows ) {

@@ -163,13 +163,30 @@ final class Coywolf_RPU_GitHub_Updater {
 	 * message in the admin notice; returning $reply (false by default)
 	 * lets WP proceed with its normal download.
 	 *
-	 * @param mixed         $reply    Filtered reply (default false → "go ahead").
-	 * @param string        $package  Package URL WP is about to download.
-	 * @param WP_Upgrader   $upgrader Upgrader instance (unused).
+	 * Manual zip uploads (Plugins → Add New → Upload Plugin) pass a local
+	 * filesystem path rather than a URL; those are left untouched so an
+	 * upload isn't mistaken for an untrusted remote download.
+	 *
+	 * @param mixed         $reply      Filtered reply (default false → "go ahead").
+	 * @param string        $package    Package URL (or local path) WP is about to fetch.
+	 * @param WP_Upgrader   $upgrader   Upgrader instance (unused).
+	 * @param array         $hook_extra Upgrade context; includes 'plugin' on plugin updates (WP 5.5+).
 	 * @return mixed
 	 */
 	public function guard_pre_download( $reply, $package, $upgrader, $hook_extra = array() ) {
 		unset( $upgrader );
+
+		// upgrader_pre_download also fires for manual zip uploads from
+		// Plugins → Add New → Upload Plugin, where `$package` is a LOCAL
+		// filesystem path, not a URL. The GitHub host allowlist only makes
+		// sense for remote downloads, and a local upload whose filename
+		// contains our slug (e.g. coywolf-reset-plugin-update.zip) would
+		// otherwise satisfy the "looks like ours" check below and then fail
+		// the allowlist — blocking the upload with "Refusing to download a
+		// plugin update from an untrusted host". Leave non-URL packages be.
+		if ( ! is_string( $package ) || ! preg_match( '#^https?://#i', $package ) ) {
+			return $reply;
+		}
 
 		// Prefer WP's authoritative signal: on a plugin update, hook_extra
 		// names the plugin basename being downloaded (WP 5.5+). When it

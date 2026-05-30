@@ -70,6 +70,38 @@ final class Coywolf_RPU_GitHub_Updater {
 		add_filter( 'plugin_row_meta', array( $this, 'override_view_details' ), 10, 2 );
 		add_filter( 'upgrader_pre_download', array( $this, 'guard_pre_download' ), 10, 4 );
 		add_action( 'upgrader_process_complete', array( $this, 'flush_after_update' ), 10, 2 );
+		add_action( 'admin_notices', array( $this, 'maybe_show_update_error' ) );
+	}
+
+	/**
+	 * Surface a GitHub-check failure on the Plugins / Updates screens instead
+	 * of silently showing no update. Shown only to users who can update
+	 * plugins, only when the last check failed (the `_err` record is set).
+	 */
+	public function maybe_show_update_error() {
+		if ( ! current_user_can( 'update_plugins' ) ) {
+			return;
+		}
+		$screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+		$id     = ( $screen && isset( $screen->id ) ) ? $screen->id : '';
+		if ( ! in_array( $id, array( 'update-core', 'plugins', 'plugins-network', 'update-core-network' ), true ) ) {
+			return;
+		}
+		$err = get_site_transient( self::TRANSIENT_KEY . '_err' );
+		if ( ! $err ) {
+			return;
+		}
+		printf(
+			'<div class="notice notice-warning"><p><strong>%s</strong> %s</p></div>',
+			esc_html__( 'Coywolf Reset Plugin Update:', 'coywolf-rpu' ),
+			esc_html(
+				sprintf(
+					/* translators: %s: failure reason */
+					__( 'could not check GitHub for updates (%s). This is usually temporary GitHub API rate-limiting on your host; the check retries automatically. If it persists, install the latest release manually from the plugin\'s GitHub Releases page.', 'coywolf-rpu' ),
+					$err
+				)
+			)
+		);
 	}
 
 	/**
@@ -478,10 +510,14 @@ final class Coywolf_RPU_GitHub_Updater {
 	}
 
 	/**
-	 * Read the cached latest-release data, or fetch it from the GitHub API
-	 * if the cache is empty.
+	 * Read the cached latest-release data, or fetch it if the cache is empty.
 	 *
-	 * @return array|null Decoded release object, or null on failure.
+	 * Tries the GitHub REST API first (real asset URLs + release body for the
+	 * changelog); on failure — most often api.github.com rate-limiting the
+	 * host's shared IP (60 requests/hour, unauthenticated) — falls back to the
+	 * github.com releases Atom feed, which is not subject to that limit.
+	 *
+	 * @return array|null Shaped release array, or null on failure.
 	 */
 	private function get_latest_release() {
 		$cached = get_site_transient( self::TRANSIENT_KEY );
@@ -489,17 +525,51 @@ final class Coywolf_RPU_GitHub_Updater {
 			return $cached;
 		}
 
-		// If the previous fetch failed (404 / rate-limit / network error),
-		// the negative result is cached for 15 minutes. Honour it instead
-		// of hammering api.github.com on every `inject_update` call —
-		// which fires on `load-update-core.php`, `load-plugins.php`,
-		// `load-update.php`, and every WP-Cron `wp_update_plugins` tick.
+		// Honour the negative cache: if a recent fetch failed, don't re-hit
+		// GitHub on every admin pageload for the next 15 minutes.
 		if ( false !== get_site_transient( self::TRANSIENT_KEY . '_neg' ) ) {
 			return null;
 		}
 
-		$url = 'https://api.github.com/repos/' . self::REPO . '/releases/latest';
-		$res = wp_remote_get(
+		$reason_api  = '';
+		$reason_atom = '';
+		$release     = $this->fetch_via_api( $reason_api );
+		if ( ! is_array( $release ) ) {
+			$release = $this->fetch_via_atom( $reason_atom );
+		}
+
+		if ( ! is_array( $release ) ) {
+			$reason = $reason_api;
+			if ( '' !== $reason_atom ) {
+				$reason = ( '' !== $reason ) ? $reason . '; ' . $reason_atom : $reason_atom;
+			}
+			if ( '' === $reason ) {
+				$reason = 'unknown error';
+			}
+			// Short negative cache to avoid hammering GitHub, plus a longer
+			// "last error" record the Updates screen can show so the failure
+			// isn't silent.
+			set_site_transient( self::TRANSIENT_KEY . '_neg', $reason, 15 * MINUTE_IN_SECONDS );
+			set_site_transient( self::TRANSIENT_KEY . '_err', $reason, self::CACHE_HOURS * HOUR_IN_SECONDS );
+			return null;
+		}
+
+		// Success — clear any stale error note and cache the result.
+		delete_site_transient( self::TRANSIENT_KEY . '_err' );
+		set_site_transient( self::TRANSIENT_KEY, $release, self::CACHE_HOURS * HOUR_IN_SECONDS );
+		return $release;
+	}
+
+	/**
+	 * Fetch the latest release from the GitHub REST API.
+	 *
+	 * @param string $reason Out-param: failure reason ('' on success).
+	 * @return array|null Shaped release array, or null on failure.
+	 */
+	private function fetch_via_api( &$reason ) {
+		$reason = '';
+		$url    = 'https://api.github.com/repos/' . self::REPO . '/releases/latest';
+		$res    = wp_remote_get(
 			$url,
 			array(
 				'timeout' => 10,
@@ -510,46 +580,145 @@ final class Coywolf_RPU_GitHub_Updater {
 			)
 		);
 		if ( is_wp_error( $res ) ) {
-			// Cache the failure briefly so DNS / connection errors don't
-			// re-fire the 10s timeout on every subsequent admin pageload.
-			set_site_transient( self::TRANSIENT_KEY . '_neg', 'wp_error', 15 * MINUTE_IN_SECONDS );
+			$reason = 'GitHub API: ' . $res->get_error_message();
 			return null;
 		}
 		$code = (int) wp_remote_retrieve_response_code( $res );
 		if ( 200 !== $code ) {
-			// Cache a tiny negative result so we don't hammer GitHub when
-			// there are no releases yet (404) or we're rate-limited.
-			set_site_transient( self::TRANSIENT_KEY . '_neg', $code, 15 * MINUTE_IN_SECONDS );
+			$reason = ( 403 === $code )
+				? 'GitHub API rate limit reached (HTTP 403)'
+				: sprintf( 'GitHub API returned HTTP %d', $code );
 			return null;
 		}
-		$body = wp_remote_retrieve_body( $res );
-		$data = json_decode( $body, true );
+		$data = json_decode( wp_remote_retrieve_body( $res ), true );
 		if ( ! is_array( $data ) || empty( $data['tag_name'] ) ) {
+			$reason = 'GitHub API: unexpected response';
+			return null;
+		}
+		return $this->shape_release(
+			(string) $data['tag_name'],
+			isset( $data['name'] ) ? (string) $data['name'] : '',
+			isset( $data['body'] ) ? (string) $data['body'] : '',
+			isset( $data['published_at'] ) ? (string) $data['published_at'] : '',
+			isset( $data['html_url'] ) ? (string) $data['html_url'] : '',
+			isset( $data['zipball_url'] ) ? (string) $data['zipball_url'] : '',
+			( ! empty( $data['assets'] ) && is_array( $data['assets'] ) ) ? $data['assets'] : array()
+		);
+	}
+
+	/**
+	 * Fetch the latest release from the GitHub releases Atom feed
+	 * (github.com/<repo>/releases.atom), which is not subject to the REST API
+	 * rate limit. The feed has no asset URLs, so the package URL is built from
+	 * the release workflow's known "<slug>.zip" asset naming, with the
+	 * codeload zipball as a fallback (handled by fix_source_dirname()).
+	 *
+	 * @param string $reason Out-param: failure reason ('' on success).
+	 * @return array|null Shaped release array, or null on failure.
+	 */
+	private function fetch_via_atom( &$reason ) {
+		$reason = '';
+		$url    = 'https://github.com/' . self::REPO . '/releases.atom';
+		$res    = wp_remote_get(
+			$url,
+			array(
+				'timeout' => 10,
+				'headers' => array(
+					'Accept'     => 'application/atom+xml',
+					'User-Agent' => 'WordPress/' . get_bloginfo( 'version' ) . '; ' . home_url(),
+				),
+			)
+		);
+		if ( is_wp_error( $res ) ) {
+			$reason = 'GitHub Atom feed: ' . $res->get_error_message();
+			return null;
+		}
+		$code = (int) wp_remote_retrieve_response_code( $res );
+		if ( 200 !== $code ) {
+			$reason = sprintf( 'GitHub Atom feed returned HTTP %d', $code );
+			return null;
+		}
+		$body = (string) wp_remote_retrieve_body( $res );
+		if ( ! preg_match( '#<entry>(.*?)</entry>#s', $body, $m ) ) {
+			$reason = 'GitHub Atom feed: no releases found';
+			return null;
+		}
+		$entry = $m[1];
+
+		// The tag is the trailing segment of the release link or the entry id.
+		$tag = '';
+		if ( preg_match( '#/releases/tag/([^"\'<>\s]+)#', $entry, $tm ) ) {
+			$tag = html_entity_decode( $tm[1], ENT_QUOTES, 'UTF-8' );
+		} elseif ( preg_match( '#<id>[^<]*/([^/<]+)</id>#', $entry, $tm ) ) {
+			$tag = $tm[1];
+		}
+		if ( '' === $tag ) {
+			$reason = 'GitHub Atom feed: could not determine the release tag';
 			return null;
 		}
 
-		// Reduce stored payload — we only need a few fields.
-		$keep = array(
-			'tag_name'     => isset( $data['tag_name'] ) ? (string) $data['tag_name'] : '',
-			'name'         => isset( $data['name'] ) ? (string) $data['name'] : '',
-			'body'         => isset( $data['body'] ) ? (string) $data['body'] : '',
-			'published_at' => isset( $data['published_at'] ) ? (string) $data['published_at'] : '',
-			'html_url'     => isset( $data['html_url'] ) ? (string) $data['html_url'] : '',
-			'zipball_url'  => isset( $data['zipball_url'] ) ? (string) $data['zipball_url'] : '',
-			'assets'       => array(),
-		);
-		if ( ! empty( $data['assets'] ) && is_array( $data['assets'] ) ) {
-			foreach ( $data['assets'] as $a ) {
-				if ( ! is_array( $a ) ) { continue; }
-				$keep['assets'][] = array(
-					'name'                 => isset( $a['name'] ) ? (string) $a['name'] : '',
-					'browser_download_url' => isset( $a['browser_download_url'] ) ? (string) $a['browser_download_url'] : '',
-					'content_type'         => isset( $a['content_type'] ) ? (string) $a['content_type'] : '',
-				);
+		$title = $tag;
+		if ( preg_match( '#<title>(.*?)</title>#s', $entry, $ttl ) ) {
+			$decoded = trim( html_entity_decode( wp_strip_all_tags( $ttl[1] ), ENT_QUOTES, 'UTF-8' ) );
+			if ( '' !== $decoded ) {
+				$title = $decoded;
 			}
 		}
+		$updated = preg_match( '#<updated>(.*?)</updated>#s', $entry, $up ) ? $up[1] : '';
 
-		set_site_transient( self::TRANSIENT_KEY, $keep, self::CACHE_HOURS * HOUR_IN_SECONDS );
+		$asset = array(
+			array(
+				'name'                 => $this->plugin_slug . '.zip',
+				'browser_download_url' => 'https://github.com/' . self::REPO . '/releases/download/' . $tag . '/' . $this->plugin_slug . '.zip',
+				'content_type'         => 'application/zip',
+			),
+		);
+		$zipball = 'https://codeload.github.com/' . self::REPO . '/zip/refs/tags/' . $tag;
+
+		return $this->shape_release(
+			$tag,
+			$title,
+			'',
+			$updated,
+			'https://github.com/' . self::REPO . '/releases/tag/' . $tag,
+			$zipball,
+			$asset
+		);
+	}
+
+	/**
+	 * Reduce a release (from either source) to the small set of fields the
+	 * updater stores in its transient.
+	 *
+	 * @param string $tag       Release tag.
+	 * @param string $name      Release name.
+	 * @param string $body      Release notes (markdown).
+	 * @param string $published Published timestamp.
+	 * @param string $html_url  Human URL for the release.
+	 * @param string $zipball   Fallback zipball URL.
+	 * @param array  $assets    Raw asset records.
+	 * @return array
+	 */
+	private function shape_release( $tag, $name, $body, $published, $html_url, $zipball, $assets ) {
+		$keep = array(
+			'tag_name'     => (string) $tag,
+			'name'         => (string) $name,
+			'body'         => (string) $body,
+			'published_at' => (string) $published,
+			'html_url'     => (string) $html_url,
+			'zipball_url'  => (string) $zipball,
+			'assets'       => array(),
+		);
+		foreach ( (array) $assets as $a ) {
+			if ( ! is_array( $a ) ) {
+				continue;
+			}
+			$keep['assets'][] = array(
+				'name'                 => isset( $a['name'] ) ? (string) $a['name'] : '',
+				'browser_download_url' => isset( $a['browser_download_url'] ) ? (string) $a['browser_download_url'] : '',
+				'content_type'         => isset( $a['content_type'] ) ? (string) $a['content_type'] : '',
+			);
+		}
 		return $keep;
 	}
 

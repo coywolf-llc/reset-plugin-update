@@ -68,7 +68,7 @@ final class Coywolf_RPU_GitHub_Updater {
 		add_filter( 'plugins_api', array( $this, 'plugin_info' ), 10, 3 );
 		add_filter( 'upgrader_source_selection', array( $this, 'fix_source_dirname' ), 10, 4 );
 		add_filter( 'plugin_row_meta', array( $this, 'override_view_details' ), 10, 2 );
-		add_filter( 'upgrader_pre_download', array( $this, 'guard_pre_download' ), 10, 3 );
+		add_filter( 'upgrader_pre_download', array( $this, 'guard_pre_download' ), 10, 4 );
 		add_action( 'upgrader_process_complete', array( $this, 'flush_after_update' ), 10, 2 );
 	}
 
@@ -168,22 +168,36 @@ final class Coywolf_RPU_GitHub_Updater {
 	 * @param WP_Upgrader   $upgrader Upgrader instance (unused).
 	 * @return mixed
 	 */
-	public function guard_pre_download( $reply, $package, $upgrader ) {
+	public function guard_pre_download( $reply, $package, $upgrader, $hook_extra = array() ) {
 		unset( $upgrader );
-		// Only inspect updates that are clearly ours.
-		if ( ! is_string( $package ) || '' === $package ) {
-			return $reply;
+
+		// Prefer WP's authoritative signal: on a plugin update, hook_extra
+		// names the plugin basename being downloaded (WP 5.5+). When it
+		// says the download is ours, enforce the allowlist regardless of
+		// what the URL looks like. This closes the gap where a tampered
+		// update_plugins transient pointed our package at a non-GitHub
+		// host whose path matched neither the repo nor the slug — the old
+		// "looks like ours" heuristic would fail open and let it through.
+		$is_ours = is_array( $hook_extra )
+			&& ! empty( $hook_extra['plugin'] )
+			&& $hook_extra['plugin'] === $this->plugin_basename;
+
+		if ( ! $is_ours ) {
+			// No authoritative signal (older WP, or another plugin's
+			// download): only intervene when the package URL path looks
+			// like ours, otherwise stay out of WP's way entirely.
+			$parts = is_string( $package ) ? wp_parse_url( $package ) : false;
+			$path  = ( is_array( $parts ) && ! empty( $parts['path'] ) ) ? $parts['path'] : '';
+			$looks_like_ours = ( '' !== $path )
+				&& ( false !== stripos( $path, self::REPO ) || false !== stripos( $path, $this->plugin_slug ) );
+			if ( ! $looks_like_ours ) {
+				return $reply;
+			}
 		}
-		$parts = wp_parse_url( $package );
-		if ( ! is_array( $parts ) || empty( $parts['path'] ) ) {
-			return $reply;
-		}
-		$looks_like_ours = ( false !== stripos( $parts['path'], self::REPO ) )
-			|| ( false !== stripos( $parts['path'], $this->plugin_slug ) );
-		if ( ! $looks_like_ours ) {
-			return $reply;
-		}
-		if ( '' === $this->validate_package_url( $package ) ) {
+
+		// Ours (or looks like it): fail closed unless the package URL is on
+		// the GitHub host allowlist.
+		if ( ! is_string( $package ) || '' === $this->validate_package_url( $package ) ) {
 			return new WP_Error(
 				'coywolf_rpu_untrusted_package',
 				__( 'Refusing to download a plugin update from an untrusted host.', 'coywolf-rpu' )

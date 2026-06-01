@@ -230,3 +230,52 @@ jobs:
             --notes-file release-notes.md \
             --target "$TARGET" \
             "${SLUG}.zip"
+
+      # ----------------------------------------------------------------------
+      # WordPress.org variant (.github/build-wporg.sh): strips the GitHub
+      # self-updater the .org directory forbids, derives the .org zip from the
+      # same stage as the GitHub zip, always uploads it as an artifact (for the
+      # initial .org submission / Plugin Check), and deploys to .org SVN once
+      # the WPORG_SVN_* secrets exist (skips cleanly until then).
+      # ----------------------------------------------------------------------
+      - name: Build WordPress.org variant
+        if: steps.tagcheck.outputs.exists == 'false'
+        env:
+          SLUG: coywolf-reset-plugin-update
+        run: |
+          set -euo pipefail
+          bash .github/build-wporg.sh "$RUNNER_TEMP/build/$SLUG" "$RUNNER_TEMP/wporg"
+          ( cd "$RUNNER_TEMP/wporg" && zip -r -q "$GITHUB_WORKSPACE/$SLUG-wporg.zip" "$SLUG" )
+          ls -l "$SLUG-wporg.zip"
+
+      - name: Upload WordPress.org zip (submission / Plugin Check)
+        if: steps.tagcheck.outputs.exists == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.final.outputs.tag }}-wporg
+          path: coywolf-reset-plugin-update-wporg.zip
+          if-no-files-found: error
+
+      - name: Check for WordPress.org SVN credentials
+        if: steps.tagcheck.outputs.exists == 'false'
+        id: wporg
+        env:
+          SVN_USERNAME: ${{ secrets.WPORG_SVN_USERNAME }}
+        run: |
+          if [ -n "${SVN_USERNAME:-}" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No WPORG_SVN_USERNAME secret set — built the .org zip artifact; skipping SVN deploy."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy to WordPress.org SVN
+        if: steps.tagcheck.outputs.exists == 'false' && steps.wporg.outputs.ready == 'true'
+        uses: 10up/action-wordpress-plugin-deploy@stable
+        env:
+          SVN_USERNAME: ${{ secrets.WPORG_SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.WPORG_SVN_PASSWORD }}
+          SLUG:         coywolf-reset-plugin-update
+          VERSION:      ${{ steps.final.outputs.version }}
+          BUILD_DIR:    ${{ runner.temp }}/wporg/coywolf-reset-plugin-update
+          ASSETS_DIR:   .wordpress-org

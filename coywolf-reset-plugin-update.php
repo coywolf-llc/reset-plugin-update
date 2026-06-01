@@ -34,7 +34,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+/* wporg-strip:start — GitHub self-updater (removed from the WordPress.org build) */
 require_once __DIR__ . '/includes/class-github-updater.php';
+/* wporg-strip:end */
 
 final class Coywolf_Reset_Plugin_Update {
 
@@ -225,8 +227,10 @@ final class Coywolf_Reset_Plugin_Update {
 
 Coywolf_Reset_Plugin_Update::boot();
 
+/* wporg-strip:start — GitHub self-updater (removed from the WordPress.org build) */
 // Self-update from GitHub Releases. Without this, the "Reset plugin update
 // cache" button has nothing to surface for THIS plugin — WordPress only
 // knows about wp.org-hosted plugins by default. This filter teaches WP to
 // look at the project's GitHub releases for newer versions.
 ( new Coywolf_RPU_GitHub_Updater( __FILE__, Coywolf_Reset_Plugin_Update::VERSION ) )->init();
+/* wporg-strip:end */

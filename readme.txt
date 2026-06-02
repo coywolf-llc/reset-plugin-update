@@ -2,7 +2,7 @@
 Contributors: coywolf
 Tags: plugin updates, updates, cache, github, maintenance
 Requires at least: 5.0
-Tested up to: 6.5
+Tested up to: 7.0
 Requires PHP: 7.2
 Stable tag: 1.0.17
 License: GPLv2 or later

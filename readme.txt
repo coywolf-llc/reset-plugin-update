@@ -1,6 +1,5 @@
 === Coywolf Reset Plugin Update ===
-Contributors: coywolf
-Tags: plugin updates, updates, cache, github, maintenance
+Contributors: jonhenshawTags: plugin updates, updates, cache, github, maintenance
 Requires at least: 5.0
 Tested up to: 7.0
 Requires PHP: 7.2

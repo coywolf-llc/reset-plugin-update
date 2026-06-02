@@ -58,6 +58,11 @@ strip_marked "$STAGE/$MAIN_BASE"
 strip_marked "$STAGE/readme.txt"
 rm -f "$STAGE/readme.md"
 
+# Strip the "Update URI" plugin header. WordPress.org forbids it (it signals a
+# non-.org update source, and Plugin Check reports it as a plugin updater). The
+# GitHub build keeps it so .org can't hijack updates for the same slug.
+perl -ni -e 'print unless /^\s*\*\s*Update URI\s*:/i' "$STAGE/$MAIN_BASE"
+
 # The stripped main file must still parse.
 php -l "$STAGE/$MAIN_BASE"
 

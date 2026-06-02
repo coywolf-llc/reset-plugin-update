@@ -15,6 +15,11 @@ on:
 permissions:
   contents: write
 
+env:
+  # Run the bundled JS actions (checkout/setup-node/upload-artifact) on the
+  # Node 24 runtime instead of the deprecated Node 20 (GitHub default 2026-06-16).
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   release:
     if: github.event.pull_request.merged == true

@@ -4,7 +4,7 @@ Tags: plugin updates, updates, cache, github, maintenance
 Requires at least: 5.0
 Tested up to: 7.0
 Requires PHP: 7.2
-Stable tag: 1.0.22
+Stable tag: 1.0.23
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -62,6 +62,9 @@ On a multisite, only users who could already update plugins network-wide
 will see the Tools menu item.
 
 == Changelog ==
+
+= 1.0.23 =
+* CI: upgrade actions to Node 24-native versions (#24).
 
 = 1.0.22 =
 * CI: run bundled JS actions on Node 24 (#23).

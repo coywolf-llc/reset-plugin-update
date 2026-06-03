@@ -2,7 +2,7 @@
 
 # Coywolf Reset Updates
 
-Adds a **Tools → Reset Updates** page with a single button that flushes the plugin update cache so WordPress re-checks every installed plugin for new versions — including plugins hosted on GitHub and on the wordpress.org plugin repository.
+Adds a **Tools → Reset Updates** page with a button that clears the cached update data and forces WordPress to recheck for new versions — useful when a release was just published and you do not want to wait for the next scheduled check.
 
 - **Version:** 1.0.25
 - **Requires WordPress:** 5.0 or later
@@ -15,19 +15,19 @@ Adds a **Tools → Reset Updates** page with a single button that flushes the pl
 WordPress caches plugin update data and only re-checks every 12 hours. When you have just published a new release (especially for a GitHub-hosted plugin) you usually do not want to wait. This plugin gives you a one-click way to drop that cache and force an immediate re-check.
 
 - Adds a **Reset Updates** sub-menu under **Tools**.
-- The page has a single **Reset plugin update cache** button.
+- The page has a single **Reset update cache** button.
 - Clicking it deletes the `update_plugins` site transient, clears the plugin-info cache (`wp_clean_plugins_cache`), and sweeps common GitHub-updater throttle caches (any site transient whose key contains `gh_release`, `github_release`, or `github_update` — including the `_neg` negative-response variants Coywolf's own updater uses).
 - The handler then redirects to WordPress's own **Check Again** URL (`update-core.php?force-check=1`). That page's `load-update-core.php` hook calls `wp_version_check()`, `wp_update_plugins()`, and `wp_update_themes()` with `force = true`, so the re-check is guaranteed to run in the same request the user lands on — same flow the original `?coywolf_blc_check` snippet relied on.
 - A one-shot success notice appears on the Updates page with a link to the **Plugins** screen so you can act on the freshly fetched results.
 - Access is gated by the standard `update_plugins` capability — by default only administrators.
 - Stores no options of its own. `uninstall.php` clears the plugin-update caches once more so the site is left clean when the plugin is removed.
-- Self-updates from its own GitHub releases via the standard **Dashboard → Updates** flow (releases cached for 6 hours, downloads pinned to a GitHub host allowlist) — so the **Reset plugin update cache** button can find newer versions of this plugin itself.
+- Self-updates from its own GitHub releases via the standard **Dashboard → Updates** flow (releases cached for 6 hours, downloads pinned to a GitHub host allowlist) — so the **Reset update cache** button can find newer versions of this plugin itself.
 
 ## Installation
 
 1. Upload the `coywolf-reset-plugin-update` folder to `/wp-content/plugins/`, or upload the .zip via **Plugins → Add New → Upload Plugin**.
 2. Activate the plugin.
-3. Go to **Tools → Reset Updates** and click **Reset plugin update cache**.
+3. Go to **Tools → Reset Updates** and click **Reset update cache**.
 
 ## Frequently Asked Questions
 

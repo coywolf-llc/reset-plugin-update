@@ -93,7 +93,7 @@ final class Coywolf_RPU_GitHub_Updater {
 		}
 		printf(
 			'<div class="notice notice-warning"><p><strong>%s</strong> %s</p></div>',
-			esc_html__( 'Coywolf Reset Plugin Update:', 'coywolf-rpu' ),
+			esc_html__( 'Coywolf Reset Updates:', 'coywolf-rpu' ),
 			esc_html(
 				sprintf(
 					/* translators: %s: failure reason */
@@ -382,7 +382,7 @@ final class Coywolf_RPU_GitHub_Updater {
 		}
 
 		$info                = new stdClass();
-		$info->name          = 'Coywolf Reset Plugin Update';
+		$info->name          = 'Coywolf Reset Updates';
 		$info->slug          = $this->plugin_slug;
 		$info->version       = $this->normalize_version( $release['tag_name'] );
 		$info->author        = '<a href="https://coywolf.com/">Coywolf</a>';

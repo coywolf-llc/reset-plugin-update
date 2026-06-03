@@ -1,6 +1,6 @@
-<img src=".wordpress-org/icon-256x256.png" alt="Coywolf Reset Plugin Update logo" width="128" />
+<img src=".wordpress-org/icon-256x256.png" alt="Coywolf Reset Updates logo" width="128" />
 
-# Coywolf Reset Plugin Update
+# Coywolf Reset Updates
 
 Adds a **Tools → Reset Updates** page with a single button that flushes the plugin update cache so WordPress re-checks every installed plugin for new versions — including plugins hosted on GitHub and on the wordpress.org plugin repository.
 

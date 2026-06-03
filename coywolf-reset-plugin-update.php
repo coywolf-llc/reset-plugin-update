@@ -3,7 +3,7 @@
  * Plugin Name:       Coywolf Reset Updates
  * Plugin URI:        https://coywolf.com/notes/a-plugin-to-reset-the-wordpress-plugin-update-cache/
  * Description:       Adds a Tools → Reset Updates page with a button that clears the cached update data and forces WordPress to recheck for new versions — useful when a release was just published and you do not want to wait for the next scheduled check.
- * Version:           1.0.26
+ * Version:           1.0.27
  * Requires at least: 5.0
  * Requires PHP:      7.2
  * Author:            Coywolf
@@ -40,7 +40,7 @@ require_once __DIR__ . '/includes/class-github-updater.php';
 
 final class Coywolf_Reset_Plugin_Update {
 
-	const VERSION    = '1.0.26';
+	const VERSION    = '1.0.27';
 	const SLUG       = 'coywolf-rpu';
 	const ACTION     = 'coywolf_rpu_reset';
 	const CAPABILITY = 'update_plugins';

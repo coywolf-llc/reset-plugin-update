@@ -111,7 +111,7 @@ final class Coywolf_Reset_Plugin_Update {
 	public static function handle_reset() {
 		// 1. POST-only.
 		$method = isset( $_SERVER['REQUEST_METHOD'] )
-			? strtoupper( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotValidated
+			? strtoupper( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_METHOD'] ) ) ) // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotValidated
 			: '';
 		if ( 'POST' !== $method ) {
 			wp_die(
@@ -186,7 +186,7 @@ final class Coywolf_Reset_Plugin_Update {
 				// is left alone — those `%` are intentional wildcards.
 				$like = $wpdb->esc_like( $prefix ) . $pat;
 				$sql  = "SELECT {$column} FROM {$table} WHERE {$column} LIKE %s"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$rows = $wpdb->get_col( $wpdb->prepare( $sql, $like ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+				$rows = $wpdb->get_col( $wpdb->prepare( $sql, $like ) ); // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared, WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, PluginCheck.Security.DirectDB.UnescapedDBParameter -- One-shot admin cache clear: column/table are hardcoded WP internals; the only user-derived value is bound via prepare(%s). A direct, uncached query is required to find transient keys by pattern.
 				if ( $rows ) {
 					$found = array_merge( $found, $rows );
 				}

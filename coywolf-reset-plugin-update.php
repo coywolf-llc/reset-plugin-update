@@ -70,16 +70,16 @@ final class Coywolf_Reset_Plugin_Update {
 
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'Reset Plugin Updates', 'coywolf-reset-updates' ); ?></h1>
+			<h1><?php esc_html_e( 'Reset Updates', 'coywolf-reset-updates' ); ?></h1>
 
 			<p>
-				<?php esc_html_e( 'Clears the cached plugin update data and force-triggers WordPress to re-check every plugin for new versions — including plugins hosted on GitHub and on the wordpress.org plugin repository. Useful when a release was just published and you do not want to wait for the next scheduled check.', 'coywolf-reset-updates' ); ?>
+				<?php esc_html_e( 'Clears the cached update data and forces WordPress to recheck for new versions. Useful when a release was just published, and you do not want to wait for the next scheduled check.', 'coywolf-reset-updates' ); ?>
 			</p>
 
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION ); ?>" />
 				<?php wp_nonce_field( self::ACTION ); ?>
-				<?php submit_button( __( 'Reset plugin update cache', 'coywolf-reset-updates' ), 'primary', 'submit', true ); ?>
+				<?php submit_button( __( 'Reset update cache', 'coywolf-reset-updates' ), 'primary', 'submit', true ); ?>
 			</form>
 		</div>
 		<?php

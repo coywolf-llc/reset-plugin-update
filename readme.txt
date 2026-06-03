@@ -8,7 +8,7 @@ Stable tag: 1.0.25
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-One-click reset of the plugin update cache so WordPress re-checks every plugin for updates — including GitHub and wordpress.org plugins.
+One-click button that clears the cached update data and forces WordPress to recheck for new versions — no waiting for the next scheduled check.
 
 == Description ==
 
@@ -18,7 +18,7 @@ you usually do not want to wait. This plugin gives you a one-click way to
 drop that cache and force an immediate re-check.
 
 * Adds a "Reset Updates" sub-menu under Tools.
-* The page has a single "Reset plugin update cache" button.
+* The page has a single "Reset update cache" button.
 * Clicking it deletes the `update_plugins` site transient, clears the
   plugin-info cache (`wp_clean_plugins_cache`), removes common GitHub-updater
   throttle caches (any site transient whose name ends in `_gh_release`,
@@ -37,7 +37,7 @@ drop that cache and force an immediate re-check.
 1. Upload the `coywolf-reset-plugin-update` folder to `/wp-content/plugins/`,
    or upload the .zip via Plugins -> Add New -> Upload Plugin.
 2. Activate the plugin.
-3. Go to Tools -> Reset Updates and click "Reset plugin update cache".
+3. Go to Tools -> Reset Updates and click "Reset update cache".
 
 == Frequently Asked Questions ==
 

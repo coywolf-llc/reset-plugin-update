@@ -4,7 +4,7 @@ Tags: plugin updates, updates, cache, github, maintenance
 Requires at least: 5.0
 Tested up to: 7.0
 Requires PHP: 7.2
-Stable tag: 1.0.25
+Stable tag: 1.0.26
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -62,6 +62,9 @@ On a multisite, only users who could already update plugins network-wide
 will see the Tools menu item.
 
 == Changelog ==
+
+= 1.0.26 =
+* Tighten the plugin description to match the page copy (#27).
 
 = 1.0.25 =
 * Update the Reset Updates page copy (#26).

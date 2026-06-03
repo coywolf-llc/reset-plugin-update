@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name:       Coywolf Reset Plugin Update
+ * Plugin Name:       Coywolf Reset Updates
  * Plugin URI:        https://coywolf.com/notes/a-plugin-to-reset-the-wordpress-plugin-update-cache/
  * Description:       Adds a Tools → Reset Updates page with a button that flushes the plugin update cache and force-triggers WordPress to re-check for updates on plugins hosted on GitHub or the wordpress.org plugin repository.
  * Version:           1.0.23
@@ -10,11 +10,11 @@
  * Author URI:        https://coywolf.com/jon-henshaw/
  * License:           GPL-2.0-or-later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
- * Text Domain:       coywolf-reset-plugin-update
+ * Text Domain:       coywolf-reset-updates
  *
  * @package CoywolfResetPluginUpdate
  *
- * Coywolf Reset Plugin Update
+ * Coywolf Reset Updates
  * Copyright (C) 2026 Coywolf LLC
  *
  * This program is free software; you can redistribute it and/or modify it
@@ -55,8 +55,8 @@ final class Coywolf_Reset_Plugin_Update {
 
 	public static function register_menu() {
 		add_management_page(
-			__( 'Reset Updates', 'coywolf-reset-plugin-update' ),
-			__( 'Reset Updates', 'coywolf-reset-plugin-update' ),
+			__( 'Reset Updates', 'coywolf-reset-updates' ),
+			__( 'Reset Updates', 'coywolf-reset-updates' ),
 			self::CAPABILITY,
 			self::SLUG,
 			array( __CLASS__, 'render_page' )
@@ -65,21 +65,21 @@ final class Coywolf_Reset_Plugin_Update {
 
 	public static function render_page() {
 		if ( ! current_user_can( self::CAPABILITY ) ) {
-			wp_die( esc_html__( 'You do not have permission to access this page.', 'coywolf-reset-plugin-update' ) );
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'coywolf-reset-updates' ) );
 		}
 
 		?>
 		<div class="wrap">
-			<h1><?php esc_html_e( 'Reset Plugin Updates', 'coywolf-reset-plugin-update' ); ?></h1>
+			<h1><?php esc_html_e( 'Reset Plugin Updates', 'coywolf-reset-updates' ); ?></h1>
 
 			<p>
-				<?php esc_html_e( 'Clears the cached plugin update data and force-triggers WordPress to re-check every plugin for new versions — including plugins hosted on GitHub and on the wordpress.org plugin repository. Useful when a release was just published and you do not want to wait for the next scheduled check.', 'coywolf-reset-plugin-update' ); ?>
+				<?php esc_html_e( 'Clears the cached plugin update data and force-triggers WordPress to re-check every plugin for new versions — including plugins hosted on GitHub and on the wordpress.org plugin repository. Useful when a release was just published and you do not want to wait for the next scheduled check.', 'coywolf-reset-updates' ); ?>
 			</p>
 
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 				<input type="hidden" name="action" value="<?php echo esc_attr( self::ACTION ); ?>" />
 				<?php wp_nonce_field( self::ACTION ); ?>
-				<?php submit_button( __( 'Reset plugin update cache', 'coywolf-reset-plugin-update' ), 'primary', 'submit', true ); ?>
+				<?php submit_button( __( 'Reset plugin update cache', 'coywolf-reset-updates' ), 'primary', 'submit', true ); ?>
 			</form>
 		</div>
 		<?php
@@ -115,8 +115,8 @@ final class Coywolf_Reset_Plugin_Update {
 			: '';
 		if ( 'POST' !== $method ) {
 			wp_die(
-				esc_html__( 'This action can only be performed by submitting the Reset Updates form.', 'coywolf-reset-plugin-update' ),
-				esc_html__( 'Method Not Allowed', 'coywolf-reset-plugin-update' ),
+				esc_html__( 'This action can only be performed by submitting the Reset Updates form.', 'coywolf-reset-updates' ),
+				esc_html__( 'Method Not Allowed', 'coywolf-reset-updates' ),
 				array( 'response' => 405 )
 			);
 		}
@@ -124,8 +124,8 @@ final class Coywolf_Reset_Plugin_Update {
 		// 2 + 3. Logged-in user with the right cap.
 		if ( ! is_user_logged_in() || ! current_user_can( self::CAPABILITY ) ) {
 			wp_die(
-				esc_html__( 'You do not have permission to perform this action.', 'coywolf-reset-plugin-update' ),
-				esc_html__( 'Forbidden', 'coywolf-reset-plugin-update' ),
+				esc_html__( 'You do not have permission to perform this action.', 'coywolf-reset-updates' ),
+				esc_html__( 'Forbidden', 'coywolf-reset-updates' ),
 				array( 'response' => 403 )
 			);
 		}
@@ -218,9 +218,9 @@ final class Coywolf_Reset_Plugin_Update {
 
 		printf(
 			'<div class="notice notice-success is-dismissible"><p>%1$s <a href="%2$s">%3$s</a></p></div>',
-			esc_html__( 'Plugin update cache cleared and WordPress is re-checking now.', 'coywolf-reset-plugin-update' ),
+			esc_html__( 'Plugin update cache cleared and WordPress is re-checking now.', 'coywolf-reset-updates' ),
 			esc_url( admin_url( 'plugins.php' ) ),
-			esc_html__( 'Go to the Plugins page', 'coywolf-reset-plugin-update' )
+			esc_html__( 'Go to the Plugins page', 'coywolf-reset-updates' )
 		);
 	}
 }

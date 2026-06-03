@@ -1,6 +1,6 @@
 <?php
 /**
- * Uninstall cleanup for Coywolf Reset Plugin Update.
+ * Uninstall cleanup for Coywolf Reset Updates.
  *
  * The plugin does not store any persistent options of its own; it only
  * deletes WordPress's plugin-update site transients on demand. To leave the

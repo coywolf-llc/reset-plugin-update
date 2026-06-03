@@ -1,4 +1,4 @@
-=== Coywolf Reset Plugin Update ===
+=== Coywolf Reset Updates ===
 Contributors: jonhenshaw
 Tags: plugin updates, updates, cache, github, maintenance
 Requires at least: 5.0

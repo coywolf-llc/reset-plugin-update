@@ -43,6 +43,10 @@ Yes. In addition to the standard `update_plugins` transient, it sweeps any site 
 
 Anyone with the `update_plugins` capability — typically administrators only. On a multisite, only users who could already update plugins network-wide will see the Tools menu item.
 
+## Privacy
+
+Privacy-first: this plugin includes no analytics, no tracking, and no data gathering. Nothing about you, your site, or your visitors is ever collected or sent anywhere.
+
 ## Changelog
 
 ### 1.0.27

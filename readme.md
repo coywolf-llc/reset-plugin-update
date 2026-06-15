@@ -4,7 +4,7 @@
 
 Adds a **Tools → Reset Updates** page with a button that clears the cached update data and forces WordPress to recheck for new versions — useful when a release was just published and you do not want to wait for the next scheduled check.
 
-- **Version:** 1.0.28
+- **Version:** 1.0.29
 - **Requires WordPress:** 5.0 or later
 - **Tested up to:** 7.0
 - **Requires PHP:** 7.2 or later
@@ -48,6 +48,9 @@ Anyone with the `update_plugins` capability — typically administrators only. O
 Privacy-first: this plugin includes no analytics, no tracking, and no data gathering. Nothing about you, your site, or your visitors is ever collected or sent anywhere.
 
 ## Changelog
+
+### 1.0.29
+- Updater: run GitHub release checks in the background so the Updates screen never hangs (#30).
 
 ### 1.0.28
 - Readme: state the privacy-first stance (no analytics, no data gathering) (#29).

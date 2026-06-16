@@ -4,7 +4,7 @@ Tags: plugin updates, updates, cache, github, maintenance
 Requires at least: 5.0
 Tested up to: 7.0
 Requires PHP: 7.2
-Stable tag: 1.0.29
+Stable tag: 1.0.30
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -66,6 +66,9 @@ will see the Tools menu item.
 Privacy-first: this plugin includes no analytics, no tracking, and no data gathering. Nothing about you, your site, or your visitors is ever collected or sent anywhere.
 
 == Changelog ==
+
+= 1.0.30 =
+* Show updates on the first load after clicking Reset (#31).
 
 = 1.0.29 =
 * Updater: run GitHub release checks in the background so the Updates screen never hangs (#30).

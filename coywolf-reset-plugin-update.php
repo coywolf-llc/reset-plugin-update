@@ -135,6 +135,14 @@ final class Coywolf_Reset_Plugin_Update {
 
 		self::clear_update_caches();
 
+		// Re-populate the GitHub self-updaters' release caches synchronously,
+		// in this request, before we redirect into the force-check. Without
+		// this the force-check finds every cache cold (we just deleted them),
+		// defers all the GitHub fetches to a background cron tick, and shows
+		// no GitHub-hosted updates — they only surface on the NEXT page load.
+		// That is the "nothing shows until I run it and refresh again" symptom.
+		self::warm_github_updater_caches();
+
 		// One-shot flag so the success notice appears on the page the user
 		// lands on after the redirect (update-core.php).
 		set_transient( self::NOTICE_KEY . get_current_user_id(), 1, MINUTE_IN_SECONDS );
@@ -197,6 +205,49 @@ final class Coywolf_Reset_Plugin_Update {
 			$transient = preg_replace( '/^_site_transient_(?:timeout_)?/', '', $key );
 			if ( $transient ) {
 				delete_site_transient( $transient );
+			}
+		}
+	}
+
+	/**
+	 * Synchronously warm every Coywolf self-updater's GitHub-release cache
+	 * before we redirect into WordPress's force-check.
+	 *
+	 * Why this exists: each Coywolf plugin's updater deliberately keeps the
+	 * GitHub request OFF the page-render path. On a cold cache it schedules a
+	 * background WP-Cron refresh and injects nothing that round (see
+	 * Coywolf_RPU_GitHub_Updater::inject_update). Because clear_update_caches()
+	 * just deleted those release caches, the force-check we are about to
+	 * redirect into would find every cache cold, defer all the GitHub fetches
+	 * to cron, and show no GitHub-hosted updates — they would only appear on
+	 * the NEXT admin page load, once the cron tick had populated the caches.
+	 *
+	 * Clicking the Reset button is a deliberate, one-off user action, which is
+	 * exactly the context where a bounded synchronous GitHub fetch is the
+	 * right trade (the updater makes the same call for "View details"). Each
+	 * Coywolf updater registers a per-plugin cron hook named
+	 * `coywolf_<abbr>_refresh_release` whose callback fetches the latest
+	 * release and warms the cache; firing those hooks here, in-request, means
+	 * the redirected force-check finds warm caches and surfaces the updates on
+	 * the very page the user lands on.
+	 *
+	 * Matching by hook name (rather than via a shared, explicit action hook)
+	 * is intentional: it warms updaters exactly as they are ALREADY shipped,
+	 * so this works against every installed Coywolf plugin without having to
+	 * re-release each one. A registered refresh hook also means the updater is
+	 * active, so do_action() never fires against a dormant plugin.
+	 */
+	private static function warm_github_updater_caches() {
+		if ( empty( $GLOBALS['wp_filter'] ) || ! is_array( $GLOBALS['wp_filter'] ) ) {
+			return;
+		}
+		foreach ( array_keys( $GLOBALS['wp_filter'] ) as $hook ) {
+			if ( is_string( $hook )
+				&& 0 === strpos( $hook, 'coywolf_' )
+				&& '_refresh_release' === substr( $hook, -16 ) ) {
+				// On a cold cache the callback performs one bounded GitHub
+				// fetch and stores the result; on a warm cache it is a no-op.
+				do_action( $hook );
 			}
 		}
 	}
